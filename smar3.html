@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Akıllı Aile Dashboard</title>
+  <meta name="viewport" content="width=1024, initial-scale=1.0, user-scalable=no"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Rubik:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+  <style>
+    :root {
+      --bg: #101015;
+      --dim: #6e6f8d;
+      --primary: #fff;
+      --accent: #26b5ea;
+      --danger: #fa5252;
+      --shadow: 0 2px 16px 0 #00020a;
+      --radius: 16px;
+      --iconDim: #fff;
+    }
+    * {box-sizing:border-box;}
+    html, body { margin:0; padding:0; width:100vw; height:100vh; overflow:hidden;
+      background:var(--bg); color:var(--primary); font-family:'Inter','Rubik',Arial,sans-serif;}
+    #root {
+      display:grid; grid-template-areas:
+        "prayer weather"
+        "countdown weather"
+        "clock clock"
+        "calendar calendar";
+      grid-template-columns: 1.3fr 1fr;
+      grid-template-rows: 84px 52px 1fr 150px;
+      gap:0 0; width:100vw; height:100vh;
+      padding:27px 35px 18px 35px;
+    }
+    .nobox {background:none!important;box-shadow:none!important;border:none!important;}
+    /* Gebetszeiten */
+    #prayerbar { grid-area:prayer; display:flex;align-items:flex-start;gap:24px;padding-top:4px;}
+    .prayer-item {display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;flex:1;cursor:pointer;padding:0 7px 1px 7px;}
+    .prayer-label{font-size:1em;color:var(--dim);margin-bottom:.5px;text-shadow:0 1px 0 #0003;}
+    .prayer-time {font-size:1.27em;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:.02em;line-height:1;}
+    .pray-ico{font-size:1.13em;margin-bottom:3px;color:var(--iconDim);}
+    .prayer-active .prayer-label,.prayer-active .prayer-time,.prayer-active .pray-ico{color:var(--accent);}
+    /* Wetter */
+    #weatherbox { grid-area:weather;align-items:flex-end;justify-content:flex-start;height:100%;display:flex;flex-direction:column;gap:0;cursor:pointer;padding:0 5px;}
+    .weather-icon { font-size:2.34em;margin-bottom:7px;}
+    .weather-temp { font-size:2em;font-weight:700;margin-bottom:2px;}
+    .weather-city { font-size:.96em;color:var(--dim);}
+    /* Countdown */
+    #countdown {grid-area:countdown;align-items:center;justify-content:center;display:flex;font-size:1.2em;color:var(--accent);}
+    .count-ico{font-size:1.25em;margin-right:8px;}
+    /* Uhr */
+    #clockarea {grid-area:clock;align-items:center;justify-content:center;display:flex;flex-direction:column;text-align:center;}
+    .clock {font-size:5.2em;font-weight:700;font-variant-numeric:tabular-nums;margin-bottom:9px;letter-spacing:.11em;line-height:1;}
+    .clock-date {font-size:1.31em;color:var(--dim);font-variant-numeric:tabular-nums;}
+    /* Kalender */
+    #famcal {grid-area:calendar;width:100%;display:flex;flex-direction:column;}
+    .kal-top-row {display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
+    .kal-head {font-size:1.09em;font-weight:500;letter-spacing:.03em;margin-bottom:0;}
+    .termine-list {display:flex;flex-wrap:wrap;}
+    .termin-item {display:flex;align-items:center;background:none;border:none;font-size:1em;
+      padding:5px 11px 4px 11px;margin-right:8px;margin-bottom:3px;cursor:pointer;min-width:142px;max-width:215px;
+      border-radius:14px;}
+    .termin-person{width:23px;height:23px;border-radius:100%;display:inline-flex;align-items:center;justify-content:center;
+      margin-right:8px;font-weight:700;letter-spacing:.05em;color:#fff;flex-shrink:0;font-size:.97em;}
+    /* Floating Settings-Button */
+    .settings-btn {
+      position: fixed; bottom: 24px; right: 32px; z-index:2500;
+      background: var(--accent); color: #fff; border: none; border-radius: 50%;
+      width: 55px; height: 55px; box-shadow: 0 6px 36px #1d435a55;
+      font-size: 2.1em; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: background 0.12s;
+    }
+    .settings-btn:active{background:#1489c6;}
+    /* Modal universal */
+    .modal-bg {display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:#04060db0;z-index:9999;justify-content:center;align-items:center;}
+    .modal {background:var(--bg);color:var(--primary);box-shadow:0 8px 30px #0002;
+      padding:31px 25px 24px 25px; border-radius:22px; min-width:330px; max-width:97vw;
+      position:relative;}
+    .close-modal {position:absolute;right:14px;top:12px;background:none;border:none;color:var(--dim);font-size:2.13em;}
+    .mobcolor{width:22px;height:22px;border-radius:16px;border:2px solid #fff;margin-right:8px;cursor:pointer;display:inline-block;vertical-align:middle;}
+    .mobcolor.selected{border:2px solid var(--accent);}
+    @media (max-width:850px){
+      #root{padding:8px 2vw 6px 2vw;grid-template-rows:84px 68px 1fr 200px;}
+      .clock{font-size:3.1em;}
+      .clock-date{font-size:1.01em;}
+      .modal{min-width:220px;}
+      .settings-btn{right:18px;bottom:18px;width:38px;height:38px;font-size:1.25em;}
+    }
+  </style>
+</head>
+<body>
+<div id="root">
+  <div class="nobox" id="prayerbar"></div>
+  <div class="nobox" id="weatherbox" onclick="showWeatherDetail()"></div>
+  <div class="nobox" id="countdown"><i class="fa-solid fa-stopwatch count-ico"></i><span id="countown-text">--</span></div>
+  <div class="nobox" id="clockarea">
+    <div class="clock" id="clock"></div>
+    <div class="clock-date" id="clock-date"></div>
+  </div>
+  <div class="nobox" id="famcal">
+    <div class="kal-top-row">
+      <span class="kal-head">Yaklaşan Etkinlikler</span>
+      <span>
+        <button class="add-btn" onclick="showKalModal()"><i class="fas fa-calendar-alt"></i></button>
+      </span>
+    </div>
+    <div class="termine-list" id="upcoming-terms"></div>
+  </div>
+  <!-- Floating Settings -->
+  <button class="settings-btn" id="openSETT" title="Ayarlar"><i class="fa-solid fa-gear"></i></button>
+</div>
+
+<!-- Modal universal -->
+<div class="modal-bg" id="modal-bg" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <button class="close-modal" onclick="closeModal(event)">&times;</button>
+    <div class="modal-content" id="modal-content"></div>
+  </div>
+</div>
+
+<script>
+const PERSONCOLORS = ["#ec4899", "#f59e42", "#08bcb2", "#84cc16", "#6366f1", "#e11d48", "#fbbf24", "#0ea5e9", "#ff7675", "#69aaf5"];
+const PRAYER_TR = [
+  {api:"Fajr",icon:"fa-solid fa-moon",label:"İmsak"},
+  {api:"Sunrise",icon:"fa-solid fa-sun",label:"Güneş"},
+  {api:"Dhuhr",icon:"fa-solid fa-sunrise",label:"Öğle"},
+  {api:"Asr",icon:"fa-solid fa-cloud-sun",label:"İkindi"},
+  {api:"Maghrib",icon:"fa-solid fa-moon",label:"Akşam"},
+  {api:"Isha",icon:"fa-solid fa-moon-stars",label:"Yatsı"}
+];
+
+let settings = JSON.parse(localStorage.getItem('famcalendar_fullset')) || {
+  personen: [
+    {name:"Ayşe", color:"#ec4899"},
+    {name:"Mehmet", color:"#f59e42"},
+    {name:"Elif", color:"#08bcb2"}
+  ],
+  termine: [],
+  weather: {city: "Stuttgart", lat:48.746, lon:9.237},
+  prayer: { city: "Stuttgart", country:"Germany", method:13, offset:{Fajr:0,Sunrise:0,Dhuhr:0,Asr:0,Maghrib:0,Isha:0} }
+};
+function saveSettings(){ localStorage.setItem('famcalendar_fullset',JSON.stringify(settings)); window.location.reload(); }
+function pad(x){return x.toString().padStart(2,'0');}
+function fetchPrayers(){
+  let city=encodeURIComponent(settings.prayer.city),
+      country=encodeURIComponent(settings.prayer.country),
+      method=settings.prayer.method;
+  fetch(`https://api.aladhan.com/v1/timingsByCity?city=${city}&country=${country}&method=${method}`)
+    .then(r=>r.json())
+    .then(data=>{
+      window.prayerAPIData = data.data.timings;
+      renderPrayerBar();
+      updateCountdown();
+    });
+}
+function renderPrayerBar(){
+  let prayerAPIData = window.prayerAPIData;
+  if(!prayerAPIData) return;
+  let now = new Date(), nextIdx = 0, mindiff = 1e8, out = "";
+  PRAYER_TR.forEach((p,i)=>{
+    let t=getPrayerTime(p.api,prayerAPIData,p), [h,m]=t.split(':'),td=new Date();
+    td.setHours(parseInt(h),parseInt(m),0,0);
+    let diff=(td-now);if(diff>0&&diff<mindiff){mindiff=diff;nextIdx=i;}
+  });
+  PRAYER_TR.forEach((p,i)=>{
+    let t=getPrayerTime(p.api,prayerAPIData,p);
+    out+=`<div class="prayer-item${i==nextIdx?" prayer-active":""}" onclick="showPrayerDetail('${p.api}')">
+      <span class="pray-ico"><i class="${p.icon}"></i></span>
+      <div class="prayer-label">${p.label}</div>
+      <div class="prayer-time">${t}</div>
+    </div>`;
+  });
+  document.getElementById('prayerbar').innerHTML = out;
+}
+function getPrayerTime(key,timing,p){
+  let base = timing[key]; let offset = (settings.prayer.offset||{})[key]||0;
+  let [h,m]=base.split(':').map(Number); let d=new Date();d.setHours(h,m+offset,0,0);
+  return pad(d.getHours())+':'+pad(d.getMinutes());
+}
+function showPrayerDetail(key){
+  let t=window.prayerAPIData[key];
+  let h = `<b>Namaz Detayı: ${PRAYER_TR.find(x=>x.api==key).label}</b>
+    <div style="font-size:2.1em;margin-bottom:10px;">${t}</div>
+    <ul style="line-height:1.8;font-size:1em;">
+      ${PRAYER_TR.map(p=>`<li>${p.label}: <b>${window.prayerAPIData[p.api]}</b></li>`).join('')}
+    </ul>
+    <button class="btn-flat" onclick="closeModal()">Kapat</button>`;
+  modal(h);
+}
+fetchPrayers(); setInterval(fetchPrayers, 3*60*1000);
+function updateCountdown(){
+  let prayerAPIData = window.prayerAPIData;
+  if(!prayerAPIData){document.getElementById('countown-text').textContent='--';return;}
+  let now=new Date(),nextIdx=0,mindiff=1e8;
+  PRAYER_TR.forEach((p,i)=>{
+    let t=getPrayerTime(p.api,prayerAPIData,p),[h,m]=t.split(':'),td=new Date();
+    td.setHours(parseInt(h),parseInt(m),0,0);
+    let diff = td-now;if(diff>0&&diff<mindiff){mindiff=diff;nextIdx=i;}
+  });
+  let s=Math.floor(mindiff/1000),h=Math.floor(s/3600),m=Math.floor((s%3600)/60)%60,sec=s%60;
+  document.getElementById('countown-text').innerHTML = `${PRAYER_TR[nextIdx].label} için <b>${h}:${pad(m)}:${pad(sec)}</b>`;
+}
+setInterval(updateCountdown,1000);
+
+function fetchWeather(){
+  let {lat,lon,city}=settings.weather;
+  fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&hourly=temperature_2m,weather_code&daily=temperature_2m_max,weather_code&timezone=Europe%2FBerlin&forecast_days=10`).then(r=>r.json()).then(data=>{
+    let w = data.current, WC=w.weather_code;
+    document.getElementById('weatherbox').innerHTML = `
+      <div class="weather-icon">${getWeatherIcon(WC)}</div>
+      <div class="weather-temp">${Math.round(w.temperature_2m)}°C</div>
+      <div class="weather-city">${settings.weather.city}</div>
+    `;
+    window.weatherForModal = data;
+  });
+}
+fetchWeather(); setInterval(fetchWeather, 6*60*1000);
+function getWeatherIcon(code){
+  if(code==0||code==1) return `<i class="fa-solid fa-sun"></i>`;
+  if(code==2) return `<i class="fa-solid fa-cloud-sun"></i>`;
+  if(code==3) return `<i class="fa-solid fa-cloud"></i>`;
+  if([45,48].includes(code)) return `<i class="fa-solid fa-smog"></i>`;
+  if([51,53,55,61,63,65,80,81,82].includes(code)) return `<i class="fa-solid fa-cloud-showers-heavy"></i>`;
+  if([71,73,75,77,85,86].includes(code)) return `<i class="fa-solid fa-snowflake"></i>`;
+  if([95,96,99].includes(code)) return `<i class="fa-solid fa-bolt"></i>`;
+  return `<i class="fa-solid fa-question"></i>`;
+}
+function showWeatherDetail(){
+  let data = window.weatherForModal;
+  if(!data) return modal("Veri bekleniyor...");
+  let h = `<b>${settings.weather.city} Hava Detayı</b>
+  <div style='margin:13px 0;display:flex;gap:17px;'>
+    <button class="btn-flat" onclick="renderWTab('24h')">24 Saat</button>
+    <button class="btn-flat" onclick="renderWTab('10d')">10 Gün</button>
+  </div>
+  <div id="weatherTabArea"></div>
+  <button class="btn-flat" style="margin-top:11px;" onclick="closeModal()">Kapat</button>`;
+  modal(h); setTimeout(()=>renderWTab('24h'),30);
+}
+function renderWTab(which){
+  let data=window.weatherForModal, html="";
+  if(!data) return;
+  if(which=='24h'){
+    let times = data.hourly.time.slice(0,24), temps = data.hourly.temperature_2m.slice(0,24), codes = data.hourly.weather_code.slice(0,24);
+    html+="<div style='display:flex;overflow-x:auto;'>";
+    for(let i=0;i<24;i++){
+      let hour=times[i].split('T')[1].substring(0,5);
+      html+=`<div style="text-align:center;min-width:45px;margin-right:8px;">
+        <div style='font-size:1.45em'>${getWeatherIcon(codes[i])}</div>
+        <div style='font-size:.97em;color:var(--dim);'>${hour}</div>
+        <div style="font-size:1.09em;">${Math.round(temps[i])}°</div>
+      </div>`;
+    }
+    html+="</div>";
+  }else{
+    let days = data.daily.time, tmax = data.daily.temperature_2m_max, codes = data.daily.weather_code;
+    html+="<div style='display:flex;'>";
+    for(let i=0;i<days.length;i++){
+      let date=days[i].split('-'); date=`${date[2]}.${date[1]}`;
+      html+=`<div style="text-align:center;min-width:72px;margin-right:8px;">
+        <div style='font-size:1.55em'>${getWeatherIcon(codes[i])}</div>
+        <div style='font-size:1.10em;'>${date}</div>
+        <div style="font-size:1.15em;">${Math.round(tmax[i])}°</div>
+      </div>`;
+    }
+    html+="</div>";
+  }
+  document.getElementById('weatherTabArea').innerHTML = html;
+}
+function updateClock(){
+  const now=new Date();
+  document.getElementById('clock').textContent=now.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  document.getElementById('clock-date').textContent=now.toLocaleDateString('tr-TR',{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+}
+setInterval(updateClock,1000);updateClock();
+function nextTerms(){
+  let now=(new Date()).toISOString().substr(0,10);
+  let arr=settings.termine.filter(t=>t.date>=now);
+  arr.sort((a,b)=>a.date.localeCompare(b.date));
+  return arr.slice(0,6);
+}
+function renderUpcomingTerms(){
+  let arr = nextTerms();
+  let list=document.getElementById('upcoming-terms');
+  if(!arr.length) {list.innerHTML="Yakında etkinlik yok!";}
+  else
+    list.innerHTML = arr.map(t=>{
+      let pdata=settings.personen.find(p=>p.name===t.who)||{color:"#666"};
+      return `<div class="termin-item" onclick="showKalModal('${t.date}')">
+        <span class="termin-person" style="background:${pdata.color};">${pdata.name[0]||'?'}</span>
+        <b>${t.who}</b> – <span>${t.was}</span><span style="margin-left:7px;color:#aaa;"><i class="fa-regular fa-calendar"></i> ${t.date}</span>
+      </div>`;
+    }).join('');
+}
+renderUpcomingTerms();
+function showKalModal(startdate="") {
+  let dt = startdate ? new Date(startdate) : new Date();
+  let y = dt.getFullYear(), m=dt.getMonth();
+  let days=new Date(y,m+1,0).getDate();
+  let html = `<b>${y} / ${("0"+(m+1)).slice(-2)}</b>
+    <span style="float:right">
+      <button class="btn-flat" onclick="showKalModalGo(-1,${y},${m})">&lt;</button>
+      <button class="btn-flat" onclick="showKalModalGo(1,${y},${m})">&gt;</button>
+    </span>
+    <br><table class="calendar-table"><tr>`;
+  for(let d=1;d<=days;d++){
+    let dx=new Date(y,m,d), dn=dx.getDay();
+    if(d==1) for(let p=1;p<dn;p++) html+="<td></td>";
+    let iso = `${y}-${pad(m+1)}-${pad(d)}`;
+    html+=`<td style="padding:4px 3px;" onclick="editAllTermine('${iso}')">${d}`;
+    settings.personen.forEach(p=>{
+      let t=settings.termine.find(T=>T.date==iso && T.who==p.name);
+      if(t) html+=`<div style="font-size:.88em;margin:1px 0 0 0;"><span class="termin-person" style="background:${p.color};width:15px;height:15px;">${p.name[0]}</span> <span>${t.was}</span></div>`;
+    });
+    html+="</td>";
+    if(dx.getDay()==0) html+="</tr><tr>";
+  }
+  html+="</tr></table><br><button class='btn-flat' onclick='closeModal()'>Kapat</button>";
+  modal(html);
+}
+function showKalModalGo(dir,y,m){
+  m+=dir;
+  if(m<0){y--;m=11;}
+  if(m>11){y++;m=0;}
+  showKalModal(new Date(y,m,1).toISOString().substr(0,10));
+}
+function editAllTermine(iso){
+  let termArr=settings.termine.filter(t=>t.date==iso);
+  let html = `<b>${iso}</b> <div style="margin-bottom:2px;color:var(--dim);">Tüm kişilerin etkinlikleri</div>`;
+  settings.personen.forEach(p=>{
+    let t=termArr.find(T=>T.who==p.name);
+    html+=`<div><span class="termin-person" style="background:${p.color}">${p.name[0]}</span>${p.name}:
+      <input id="editEvt${p.name}" value="${t?t.was:""}" style="width:70px;">
+      <button class="btn-flat" onclick="saveEditEvt('${iso}','${p.name}')">Kaydet</button>
+      ${t? `<button class="btn-flat" style="background:#ef4444" onclick="deleteEvt('${iso}','${p.name}')">Sil</button>`:""}
+    </div>`;
+  });
+  html+=`<button class="btn-flat" onclick="closeModal()" style="margin-top:13px">Kapat</button>`;
+  modal(html);
+}
+function saveEditEvt(d,who){
+  let v=document.getElementById('editEvt'+who).value;
+  let term=settings.termine.find(T=>T.date==d && T.who==who);
+  if(term) term.was=v; else if(v) settings.termine.push({date:d,who,was:v});
+  saveSettings(); closeModal(); renderUpcomingTerms();
+}
+function deleteEvt(d,who){
+  settings.termine=settings.termine.filter(T=>(T.date!=d||T.who!=who));
+  saveSettings(); closeModal(); renderUpcomingTerms();
+}
+document.getElementById("openSETT").onclick=function(){
+  modal(settingsPanelHTML());
+};
+function settingsPanelHTML(){
+  let html=`<h2>Ayarlar</h2>
+  <b>Kişiler ve Renk:</b><br>
+  ${settings.personen.map((p,i)=>`
+    <div style="margin-bottom:6px;">
+      <input style="font-size:1em;border-radius:9px;padding:3px 9px;width:85px;" value="${p.name}"
+        onchange="settings.personen[${i}].name=this.value;saveSettings()" >
+      ${PERSONCOLORS.map(c=>
+        `<span class="mobcolor${p.color==c?' selected':''}" style="background:${c};"
+        onclick="settings.personen[${i}].color='${c}';saveSettings()"></span>`
+      ).join('')}
+      <button class="btn-flat" style="background:#ef4444;color:#fff;padding:2px 9px;font-size:.91em;margin-left:6px;"
+        onclick="settings.personen.splice(${i},1);saveSettings()">Sil</button>
+    </div>
+  `).join('')}
+  <button class='btn-flat' onclick="settings.personen.push({name:'Yeni',color:'${PERSONCOLORS[0]}'});saveSettings()">+ Kişi Ekle</button><hr/>
+  <b>Şehir/Hava Ayarları:</b><br>
+  Şehir: <input style="font-size:1em;width:70px;" value="${settings.weather.city}" onchange="settings.weather.city=this.value;saveSettings()">
+  Lat: <input style="width:70px;" value="${settings.weather.lat}" onchange="settings.weather.lat=parseFloat(this.value)||0;saveSettings()">
+  Lon: <input style="width:70px;" value="${settings.weather.lon}" onchange="settings.weather.lon=parseFloat(this.value)||0;saveSettings()"><hr/>
+  <b>Namaz Ayarları:</b><br>
+  Şehir: <input style="width:60px;" value="${settings.prayer.city}" onchange="settings.prayer.city=this.value;saveSettings()">
+  Ülke: <input style="width:60px;" value="${settings.prayer.country}" onchange="settings.prayer.country=this.value;saveSettings()">
+  Metod: <select onchange="settings.prayer.method=parseInt(this.value);saveSettings()">
+    <option value="13" ${settings.prayer.method==13?'selected':''}>UOIF (Avr)</option>
+    <option value="2" ${settings.prayer.method==2?'selected':''}>Muslim World League</option>
+    <option value="1" ${settings.prayer.method==1?'selected':''}>Umm al-Qura</option>
+    <option value="5" ${settings.prayer.method==5?'selected':''}>Mısır</option>
+    <option value="3" ${settings.prayer.method==3?'selected':''}>ISNA</option>
+    <option value="7" ${settings.prayer.method==7?'selected':''}>Karachi</option>
+    <option value="12" ${settings.prayer.method==12?'selected':''}>Türkiye Diyanet</option>
+  </select>
+  <div>Düzeltme Dakika:
+    ${PRAYER_TR.map(p=>`${p.label}: <input type="number" style="width:24px;" value="${settings.prayer.offset[p.api]||0}"
+    onchange="settings.prayer.offset['${p.api}']=parseInt(this.value)||0;saveSettings()">`).join(' / ')}
+  </div>
+  <hr/>
+  <b>Yeni Takvim Etkinliği:</b>
+  <form onsubmit="event.preventDefault();settings.termine.push({who:this.who.value,was:this.was.value,date:this.date.value});saveSettings()">
+    Kişi:<select name="who">${settings.personen.map(p=>`<option value="${p.name}">${p.name}</option>`)}</select>
+    Etkinlik:<input name="was" required>
+    Tarih:<input name="date" type="date" value="${(new Date()).toISOString().substr(0,10)}" required>
+    <button class="btn-flat">Kaydet</button>
+  </form>
+  <button class="btn-flat" style="margin-top:8px;" onclick="closeModal()">Kapat</button>`;
+  return html;
+}
+function modal(h){
+  document.getElementById('modal-bg').style.display='flex';
+  document.getElementById('modal-content').innerHTML=h;
+}
+function closeModal(ev){
+  if(ev && ev.target!==document.getElementById('modal-bg')) return;
+  document.getElementById('modal-bg').style.display='none';
+}
+</script>
+</body>
+</html>
